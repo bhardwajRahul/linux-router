@@ -92,10 +92,11 @@ Options:
                             (example: US)
     --freq-band <GHz>       Set frequency band: 2.4 or 5 (default: 2.4)
     --driver                Choose your WiFi adapter driver (default: nl80211)
-    --enalbe-wpa1           Enable WPA 1 (LEGACY)
-    -w <WPA version>        '2' for WPA2, '3' for WPA3, '2+3' for both, '0' to disable both (Default=2)
-    --psk                   Use 64 hex digits pre-shared-key instead of
-                            passphrase
+    -w <WPA version>        WPA version indicator, can be '2', '3', '1', '3+2',
+                            '3+2+1', '2+1'. Requires '-p'. (default: '2')
+                            (Note WPA1 is legacy and unsafe)
+    --psk                   Use 64 hex digits pre-shared-key. Value of '-p'
+                            should be hex string instead of password
     --mac-filter            Enable WiFi hotspot MAC address filtering
     --mac-filter-accept     Location of WiFi hotspot MAC address filter list
                             (defaults to /etc/hostapd/hostapd.accept)
@@ -213,7 +214,7 @@ define_global_variables(){
     WIFI_IFACE=
     CHANNEL=default
     HOTSPOT20=0 # For enabling Hotspot 2.0
-    WPA1_ENABLE=0 # For enabling WPA1, marked as legacy
+    WPA1_ENABLE=0 # Enable legacy unsafe WPA1
     WPA2_ENABLE=1 # Enable WPA2 PSK-Personal
     WPA3_ENABLE=0 # Enable WPA3 SAE
     MAC_FILTER=0
@@ -430,30 +431,30 @@ parse_user_options(){
                 shift
                 HOTSPOT20=1
                 ;;
-            --enable-wpa1)
-                shift
-                WPA1_ENABLE=1
-                ;;
             -w)
                 shift
-                # WPA_VERSION="$1"
-                # [[ "$WPA_VERSION" == "2+3" ]] && WPA_VERSION=2+3
                 case "$1" in
-                    "2")
-                        WPA2_ENABLE=1
-                        ;;
                     "3")
-                        WPA2_ENABLE=0
-                        WPA3_ENABLE=1
+                        WPA1_ENABLE=0; WPA2_ENABLE=0; WPA3_ENABLE=1
                         ;;
-                    "2+3"|"3+2")
-                        WPA2_ENABLE=1
-                        WPA3_ENABLE=1
+                    "2")
+                        WPA1_ENABLE=0; WPA2_ENABLE=1; WPA3_ENABLE=0
                         ;;
-                    "0")
-                        WPA2_ENABLE=0
-                        WPA3_ENABLE=0
+                    "1")
+                        WPA1_ENABLE=1; WPA2_ENABLE=0; WPA3_ENABLE=0
                         ;;
+                    "3+2")
+                        WPA1_ENABLE=0; WPA2_ENABLE=1; WPA3_ENABLE=1
+                        ;;
+                    "2+1"|"1+2") # '1+2' is for compatibility to old script.
+                        WPA1_ENABLE=1; WPA2_ENABLE=1; WPA3_ENABLE=0
+                        ;;
+                    "3+2+1")
+                        WPA1_ENABLE=1; WPA2_ENABLE=1; WPA3_ENABLE=1
+                        ;;
+                    *)
+                        echo "Invalid -w value" >&2
+                        exit 1
                 esac
                 shift
                 ;;
@@ -1864,7 +1865,7 @@ check_wifi_settings() {
 
     if [[ $(get_adapter_kernel_module "${WIFI_IFACE}") =~ ^rtl[0-9].*$ ]]; then
         if [[ $WPA1_ENABLE == '1' ]]; then
-            echo "WARN: Realtek drivers usually have problems with WPA1, WPA2 is recommended" >&2
+            echo "WARN: Realtek drivers usually have problems with legacy WPA1" >&2
         fi
         echo "WARN: If AP doesn't work, read https://github.com/oblique/create_ap/blob/master/howto/realtek.md" >&2
     fi
@@ -2015,6 +2016,10 @@ dealwith_mac() {
 }
 
 write_hostapd_conf() {
+    local WPA_VERSION
+    local WPA_KEYMGMT
+    local WPA_KEY_TYPE
+
     cat <<- EOF > "$CONFDIR/hostapd.conf"
 		beacon_int=100
 		ssid=${SSID}
@@ -2048,9 +2053,8 @@ write_hostapd_conf() {
     fi
 
     if [[ -n "$PASSPHRASE" ]]; then
-        # [[ "$WPA_VERSION" == "1+2" ]] && WPA_VERSION=3
-        WPA_VERSION=0
-        WPA_KEYMGMT=""
+        WPA_VERSION=0    # 1 means wpa1. 2 means wpa2. 3 means wpa2+1
+        WPA_KEYMGMT=""   # WPA-PSK means wpa2 or wpa1. SAE means wpa3
         if [[ $WPA1_ENABLE -eq 1 ]]; then
             WPA_VERSION=$(($WPA_VERSION + 1))
         fi
