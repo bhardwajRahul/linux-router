@@ -797,7 +797,7 @@ show_interface_pci_info() {  # pci id / model / virtual
         bus_id="$(echo "$device_path" | sed 's/\//\n/g' | tail -n 3 |sed -n 1p)"
         device_type_and_bus_id="PCI: $bus_id"
 
-        if which lspci >/dev/null 2>&1 ; then
+        if command -v lspci >/dev/null 2>&1 ; then
             device_fullname="$( lspci -D -nn -s "$bus_id" | awk '{$1="" ; print $0}' )"
         fi
 
@@ -916,7 +916,7 @@ haveged_watchdog() {
     local show_warn=1
     while :; do
         if [[ $(cat /proc/sys/kernel/random/entropy_avail) -lt 1000 ]]; then
-            if ! which haveged > /dev/null 2>&1; then
+            if ! command -v haveged > /dev/null 2>&1; then
                 if [[ $show_warn -eq 1 ]]; then
                     echo "WARN: Low entropy detected. We recommend you to install \`haveged'" 1>&2
                     show_warn=0
@@ -953,7 +953,7 @@ get_pid_by_dbus_name() {
     local DBUS_NAME="$1"
     local pid  r
 
-    which dbus-send >/dev/null 2>&1 || return 1
+    command -v dbus-send >/dev/null 2>&1 || return 1
 
     pid="$( dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.GetConnectionUnixProcessID string:$DBUS_NAME  2>/dev/null | grep "   uint32 " | awk '{print $2}' )"
     r=$?
@@ -978,7 +978,7 @@ is_nm_running() {
 
     [[ ! -n "$NM_PID" ]] && return 1 # not running
 
-    if (which nmcli >/dev/null 2>&1 ) && (nmcli -t -f RUNNING g 2>&1 | grep -E '^running$' >/dev/null 2>&1 ) ; then
+    if (command -v nmcli >/dev/null 2>&1 ) && (nmcli -t -f RUNNING g 2>&1 | grep -E '^running$' >/dev/null 2>&1 ) ; then
         if is_same_netns "$NM_PID"; then
             return 0
         fi
@@ -1027,7 +1027,7 @@ is_firewalld_running() {
 
     [[ ! -n "$FIREWALLD_PID" ]] && return 1 # not running
 
-    if (which firewall-cmd >/dev/null 2>&1 ) && [[ "$(firewall-cmd --state 2>&1)" == "running" ]] ; then
+    if (command -v firewall-cmd >/dev/null 2>&1 ) && [[ "$(firewall-cmd --state 2>&1)" == "running" ]] ; then
         if is_same_netns "$FIREWALLD_PID"; then
             echo "firewalld is running ($(firewall-cmd --version))"
             return 0
@@ -1773,13 +1773,13 @@ check_wifi_settings() {
         exit 1
     fi
 
-    if ! ( which iw > /dev/null 2>&1 && iw dev "$WIFI_IFACE" info > /dev/null 2>&1 ); then
+    if ! ( command -v iw > /dev/null 2>&1 && iw dev "$WIFI_IFACE" info > /dev/null 2>&1 ); then
         echo "WARN: Can't use 'iw' to operate interfce '$WIFI_IFACE', trying 'iwconfig' (not as good as 'iw') ..." >&2
         USE_IWCONFIG=1
     fi
 
     if [[ $USE_IWCONFIG -eq 1 ]]; then
-        if ! (which iwconfig > /dev/null 2>&1 && iwconfig "$WIFI_IFACE" > /dev/null 2>&1); then
+        if ! (command -v iwconfig > /dev/null 2>&1 && iwconfig "$WIFI_IFACE" > /dev/null 2>&1); then
             echo "ERROR: Can't use 'iwconfig' to operate interfce '$WIFI_IFACE'" >&2
             exit 1
         fi
@@ -1810,7 +1810,7 @@ check_wifi_settings() {
         fi
     fi
 
-    HOSTAPD=$(which hostapd)
+    HOSTAPD=$(command -v hostapd)
 
     if [[ $(get_adapter_kernel_module "${WIFI_IFACE}") =~ ^(8192[cd][ue]|8723a[sue])$ ]]; then
         if ! strings "$HOSTAPD" | grep -m1 rtl871xdrv > /dev/null 2>&1; then
@@ -2233,7 +2233,7 @@ run_wifi_ap_processes() {
     # start access point
     #echo "hostapd command-line interface: hostapd_cli -p $CONFDIR/hostapd_ctrl"
     # start hostapd (use stdbuf when available for no delayed output in programs that redirect stdout)
-    STDBUF_PATH=$(which stdbuf)
+    STDBUF_PATH=$(command -v stdbuf)
     if [ $? -eq 0 ]; then
         STDBUF_PATH=$STDBUF_PATH" -oL"
     fi
@@ -2285,7 +2285,7 @@ start_dnsmasq() {
 }
 
 check_rfkill_unblock_wifi() {
-    if which rfkill > /dev/null 2>&1 ; then
+    if command -v rfkill > /dev/null 2>&1 ; then
         rfkill unblock $(rfkill | grep "$PHY" | awk '{print $1}') >/dev/null 2>&1
     fi
 }

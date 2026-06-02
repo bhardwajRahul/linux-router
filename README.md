@@ -79,7 +79,6 @@ I'm currently not packaging for any distro. If you do, open a PR and add the lin
 ### Dependencies
 
 - bash
-- which
 - procps or procps-ng
 - iproute2
 - dnsmasq
