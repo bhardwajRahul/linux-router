@@ -1810,7 +1810,10 @@ check_wifi_settings() {
         fi
     fi
 
-    HOSTAPD=$(command -v hostapd)
+    HOSTAPD=$(command -v hostapd) || {
+        echo "ERROR: hostapd not found" >&2
+        exit 1
+    }
 
     if [[ $(get_adapter_kernel_module "${WIFI_IFACE}") =~ ^(8192[cd][ue]|8723a[sue])$ ]]; then
         if ! strings "$HOSTAPD" | grep -m1 rtl871xdrv > /dev/null 2>&1; then
