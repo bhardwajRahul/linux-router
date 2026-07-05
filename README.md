@@ -375,10 +375,11 @@ Options:
                             (example: US)
     --freq-band <GHz>       Set frequency band: 2.4 or 5 (default: 2.4)
     --driver                Choose your WiFi adapter driver (default: nl80211)
-    -w <WPA version>        '2' for WPA2, '1' for WPA, '1+2' for both
-                            (default: 2)
-    --psk                   Use 64 hex digits pre-shared-key instead of
-                            passphrase
+    -w <WPA version>        WPA version indicator, can be '2', '3', '1', '3+2',
+                            '3+2+1', '2+1'. Requires '-p'. (default: '2')
+                            (Note WPA1 is legacy and unsafe)
+    --psk                   Use 64 hex digits pre-shared-key. Value of '-p'
+                            should be hex string instead of password
     --mac-filter            Enable WiFi hotspot MAC address filtering
     --mac-filter-accept     Location of WiFi hotspot MAC address filter list
                             (defaults to /etc/hostapd/hostapd.accept)
